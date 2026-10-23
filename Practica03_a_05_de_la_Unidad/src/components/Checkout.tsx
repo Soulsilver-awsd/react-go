@@ -5,7 +5,8 @@
 // - Simula el procesamiento del pago y redirige a /confirmacion
 import { useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../context/cart';
+import { apiFetch, ApiError } from '../services/http';
 
 interface DatosEnvio {
   nombre: string;
@@ -48,28 +49,58 @@ const Checkout = () => {
     setDatos((prev) => ({ ...prev, [campo]: valor }));
   };
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setProcesando(true);
 
-    // Simulamos el procesamiento del pago con un pequeño retraso
-    setTimeout(() => {
+    // Construimos el cuerpo JSON que espera POST /api/checkout
+    const payload = {
+      items: cart.map((item) => ({
+        id: item.id,
+        nombre: item.nombre,
+        cantidad: item.cantidad,
+        precio: item.precio,
+      })),
+      total: totalPrice,
+      cliente: { nombre: datos.nombre, email: datos.email, ciudad: datos.ciudad },
+      metodoPago: datos.metodoPago,
+    };
+
+    try {
+      // El cliente único adjunta el JWT automáticamente (Authorization: Bearer).
+      // El servidor toma la identidad del token, no de `cliente.email`.
+      const data = await apiFetch<{
+        numero: string;
+        total: number;
+        clienteNombre: string;
+        clienteEmail: string;
+        ciudad: string;
+      }>('/api/checkout', {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      });
+
+      // Armamos el pedido para la pantalla de confirmación con los datos del servidor
       const pedido = {
-        numero: `MC-${Date.now().toString().slice(-6)}`,
-        items: cart.map((item) => ({
-          nombre: item.nombre,
-          cantidad: item.cantidad,
-          precio: item.precio,
-        })),
-        total: totalPrice,
-        cliente: { nombre: datos.nombre, email: datos.email, ciudad: datos.ciudad },
+        numero: data.numero,
+        items: payload.items,
+        total: data.total,
+        cliente: { nombre: data.clienteNombre, email: data.clienteEmail, ciudad: data.ciudad },
         fecha: new Date().toLocaleString("es-EC"),
       };
 
       // Vaciamos el carrito y pasamos los datos del pedido a la confirmación
       clearCart();
       navigate("/confirmacion", { state: { pedido } });
-    }, 1200);
+    } catch (err) {
+      // El backend devuelve APIError: mostramos su mensaje (p. ej. ROLLBACK)
+      const mensaje =
+        err instanceof ApiError
+          ? err.message
+          : "Error de conexión con el servidor. Intenta nuevamente.";
+      alert(mensaje);
+      setProcesando(false);
+    }
   };
 
   return (

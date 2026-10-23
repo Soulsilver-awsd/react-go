@@ -1,0 +1,35 @@
+services:
+  db:
+    image: postgres:16
+    container_name: multicatalogo-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-multicatalogo}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-multicatalogo}
+      POSTGRES_DB: ${POSTGRES_DB:-multicatalogo}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - multicatalogo-pgdata:/var/lib/postgresql/data
+      # El script init.sql se ejecuta automáticamente la primera vez que se crea el volumen.
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-multicatalogo} -d ${POSTGRES_DB:-multicatalogo}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: redis:alpine
+    container_name: multicatalogo-cache
+    restart: unless-stopped
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  multicatalogo-pgdata:

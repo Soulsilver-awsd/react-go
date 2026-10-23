@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512" role="img" aria-label="MultiCatálogo">
+  <title>MultiCatálogo</title>
+  <defs>
+    <linearGradient id="mcFondoMask" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#4f46e5" />
+      <stop offset="0.55" stop-color="#6366f1" />
+      <stop offset="1" stop-color="#7c3aed" />
+    </linearGradient>
+    <linearGradient id="mcVidrioMask" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" />
+      <stop offset="1" stop-color="#e0e7ff" />
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" fill="url(#mcFondoMask)" />
+  <g transform="translate(256 256) scale(0.72) translate(-256 -222)">
+    <rect x="216" y="88" width="80" height="56" rx="20" fill="url(#mcVidrioMask)" />
+    <rect x="188" y="140" width="136" height="44" rx="16" fill="url(#mcVidrioMask)" />
+    <path d="M188 208h136v104a44 44 0 0 1-44 44h-48a44 44 0 0 1-44-44z" fill="url(#mcVidrioMask)" />
+    <path d="M256 232c24 32 38 52 38 72a38 38 0 0 1-76 0c0-20 14-40 38-72z" fill="#4f46e5" opacity="0.45" />
+  </g>
+</svg>

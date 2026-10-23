@@ -1,7 +1,8 @@
 // src/components/Navbar.tsx
 import { Link, useNavigate } from "react-router-dom";
-import { useCart } from "../context/CartContext";
-import { useAuth } from "../context/AuthContext";
+import { useCart } from "../context/cart";
+import { useAuth } from "../context/auth";
+import PwaInstallButton from "./PwaInstallButton";
 
 // Definimos la interfaz para las props
 interface NavbarProps {
@@ -24,7 +25,7 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
         {/* Botón Hamburguesa siempre visible */}
         <button
           onClick={toggleSidebar}
-          className="p-2 rounded-md hover:bg-slate-100 transition text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+          className="p-2.5 rounded-md hover:bg-slate-100 transition text-slate-600 focus:outline-none focus:ring-2 focus:ring-indigo-500"
           aria-label="Alternar menú"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
@@ -32,14 +33,18 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
           </svg>
         </button>
         <h2 className="text-slate-600 font-medium text-base md:text-lg hidden sm:block">
-          {user?.rol === "admin" ? "Panel de Administración" : "Tienda MultiCatálogo"}
+          {user?.rol === "admin" ? "Panel de Administración" : "Paulo"}
         </h2>
       </div>
 
       <div className="flex items-center gap-4 md:gap-6">
+        {/* Botón "Instalar app" (PWA): solo visible si el navegador lo permite */}
+        <PwaInstallButton />
+
         <Link
           to="/carrito"
-          className="relative p-2 hover:bg-slate-100 rounded-full transition"
+          className="relative p-2.5 hover:bg-slate-100 rounded-full transition"
+          aria-label={`Carrito${totalItems > 0 ? ` (${totalItems} productos)` : ""}`}
         >
           <span className="text-xl">🛒</span>
           {totalItems > 0 && (
@@ -61,7 +66,7 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
             {user?.rol}
           </span>
 
-          <div className="relative group cursor-pointer pb-2">
+          <div className="relative group cursor-pointer pb-2" tabIndex={0} aria-label="Menú de usuario">
             <div className="w-8 h-8 rounded-full bg-slate-200 overflow-hidden border border-slate-300 flex items-center justify-center">
               <img
                 src="https://fastly.picsum.photos/id/64/4326/2884.jpg?hmac=9_SzX666YRpR_fOyYStXpfSiJ_edO3ghlSRnH2w09Kg"
@@ -70,10 +75,11 @@ const Navbar = ({ toggleSidebar }: NavbarProps) => {
               />
             </div>
 
-            <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+            {/* Se abre con hover (escritorio) o al enfocar/tocar el avatar (móvil) */}
+            <div className="absolute right-0 top-full mt-1 w-36 bg-white border border-slate-200 rounded-lg shadow-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible focus-within:opacity-100 focus-within:visible transition-all duration-200 z-50">
               <button
                 onClick={handleLogout}
-                className="w-full text-left px-4 py-2 text-sm text-red-600 font-semibold hover:bg-red-50 rounded-md transition-colors"
+                className="w-full min-h-[44px] text-left px-4 py-3 text-sm text-red-600 font-semibold hover:bg-red-50 rounded-md transition-colors"
               >
                 Cerrar Sesión
               </button>

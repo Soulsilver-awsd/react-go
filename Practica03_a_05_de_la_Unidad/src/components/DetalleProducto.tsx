@@ -6,8 +6,10 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { getProductoById } from '../services/productosService';
+import { ApiError } from '../services/http';
 import type { Producto } from '../data/productos';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../context/cart';
+import EstadoError from './EstadoError';
 
 const DetalleProducto = () => {
   const { id } = useParams<{ id: string }>();
@@ -19,6 +21,9 @@ const DetalleProducto = () => {
   const [imagenActiva, setImagenActiva] = useState<number>(0);
   const [lightboxAbierto, setLightboxAbierto] = useState<boolean>(false);
   const [agregado, setAgregado] = useState<boolean>(false);
+  // Error de carga (PWA: sin conexión y sin caché del producto).
+  const [error, setError] = useState<string | null>(null);
+  const [intento, setIntento] = useState<number>(0);
 
   useEffect(() => {
     // La ruta dinámica nos da el id como string; lo convertimos a número.
@@ -30,13 +35,26 @@ const DetalleProducto = () => {
         setProducto(data ?? null);
         setLoading(false);
       })
-      .catch(() => {
-        if (activo) setLoading(false);
+      .catch((err: unknown) => {
+        if (!activo) return;
+        setError(
+          err instanceof ApiError && err.offline
+            ? "Sin conexión: no se pudo cargar el producto."
+            : "No se pudo cargar el producto. Inténtalo de nuevo."
+        );
+        setLoading(false);
       });
     return () => {
       activo = false;
     };
-  }, [id]);
+  }, [id, intento]);
+
+  // Reintento (evento de usuario): reiniciamos el estado y forzamos la recarga.
+  const reintentar = () => {
+    setLoading(true);
+    setError(null);
+    setIntento((n) => n + 1);
+  };
 
   // Cerrar el lightbox con la tecla Escape
   useEffect(() => {
@@ -50,6 +68,11 @@ const DetalleProducto = () => {
 
   if (loading) {
     return <div className="text-center p-8">Cargando producto...</div>;
+  }
+
+  // Error de red/backend: no es lo mismo que "el producto no existe".
+  if (error) {
+    return <EstadoError mensaje={error} onReintentar={reintentar} />;
   }
 
   if (!producto) {

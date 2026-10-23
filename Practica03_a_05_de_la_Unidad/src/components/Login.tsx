@@ -1,7 +1,15 @@
 // src/components/Login.tsx
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
-import { useAuth, type Rol } from "../context/AuthContext";
+import { useNavigate, Link } from "react-router-dom";
+import { useAuth, type Rol } from "../context/auth";
+import { apiFetch, ApiError } from "../services/http";
+
+// Respuesta del endpoint POST /api/login
+interface LoginResponse {
+  token: string;
+  email: string;
+  rol: string;
+}
 
 const Login = () => {
   const [email, setEmail] = useState<string>("");
@@ -12,35 +20,32 @@ const Login = () => {
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    setError("");
 
-    // Consumo de API RESTful usando promesas (Tema 4)
-    fetch("http://localhost:3000/api/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
-    })
-      .then((response) => {
-        if (!response.ok) throw new Error("Credenciales incorrectas");
-        return response.json();
-      })
-      .then((data) => {
-        setError("");
-        // La API devuelve el rol (admin | cliente) junto al correo (Tema 5)
-        const rol: Rol = data.rol === "admin" ? "admin" : "cliente";
-        login({ email: data.email, rol });
-
-        // Redirigimos según el rol: admin al Dashboard, cliente a la Tienda
-        navigate(rol === "admin" ? "/" : "/tienda");
-      })
-      .catch((err) => {
-        setError(err.message);
-      })
-      .finally(() => {
-        setLoading(false);
+    try {
+      // Consumo de API RESTful a través del cliente único apiFetch (U1-T4).
+      const data = await apiFetch<LoginResponse>("/api/login", {
+        method: "POST",
+        body: JSON.stringify({ email, password }),
       });
+
+      // La API devuelve el rol (admin | cliente) junto al correo (Tema 5)
+      const rol: Rol = data.rol === "admin" ? "admin" : "cliente";
+      login({ email: data.email, rol }, data.token);
+
+      // Redirigimos según el rol: admin al Dashboard, cliente a la Tienda
+      navigate(rol === "admin" ? "/" : "/tienda");
+    } catch (err) {
+      // Leemos el mensaje real del backend (APIError.message)
+      setError(
+        err instanceof ApiError ? err.message : "No se pudo iniciar sesión"
+      );
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -91,11 +96,18 @@ const Login = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full bg-indigo-600 text-white font-bold py-3 rounded-lg hover:bg-indigo-700 transition disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px]"
           >
             {loading ? "Validando..." : "Iniciar Sesión"}
           </button>
         </form>
+
+        <p className="text-center text-sm text-slate-500 mt-6">
+          ¿No tienes cuenta?{" "}
+          <Link to="/registro" className="text-indigo-600 font-semibold hover:underline">
+            Crear cuenta
+          </Link>
+        </p>
 
         <div className="mt-6 p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-600 space-y-1">
           <p className="font-semibold text-slate-700">Cuentas de prueba:</p>

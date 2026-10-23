@@ -6,25 +6,45 @@
 // - Explicación del modelo multinivel
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/auth';
 import { getProductos } from '../services/productosService';
+import { ApiError } from '../services/http';
 import type { Producto } from '../data/productos';
 import { categorias } from '../data/productos';
+import EstadoError from './EstadoError';
 
 const Storefront = () => {
   const { user } = useAuth();
   const [destacados, setDestacados] = useState<Producto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  // Error al cargar los destacados (PWA: sin conexión y sin caché).
+  const [error, setError] = useState<string | null>(null);
+  const [intento, setIntento] = useState<number>(0);
 
   useEffect(() => {
-    // Consumimos el servicio de productos (mock que simula la API)
+    // Consumimos el servicio de productos (la API real; el service worker
+    // puede responder desde caché si no hay red).
     getProductos()
       .then((data) => {
         setDestacados(data.slice(0, 4)); // mostramos solo 4 destacados
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, []);
+      .catch((err: unknown) => {
+        setError(
+          err instanceof ApiError && err.offline
+            ? "Sin conexión: no se pudieron cargar los productos destacados."
+            : "No se pudieron cargar los productos destacados."
+        );
+        setLoading(false);
+      });
+  }, [intento]);
+
+  // Reintento (evento de usuario): reiniciamos el estado y forzamos la recarga.
+  const reintentar = () => {
+    setLoading(true);
+    setError(null);
+    setIntento((n) => n + 1);
+  };
 
   return (
     <div>
@@ -103,6 +123,8 @@ const Storefront = () => {
 
           {loading ? (
             <p className="text-center text-slate-500">Cargando destacados...</p>
+          ) : error ? (
+            <EstadoError mensaje={error} onReintentar={reintentar} />
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
               {destacados.map((prod) => (

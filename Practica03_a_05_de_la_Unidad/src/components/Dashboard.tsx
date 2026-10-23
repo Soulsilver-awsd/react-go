@@ -1,35 +1,103 @@
 // src/components/Dashboard.tsx
-// Resumen general con KPIs calculados desde el estado real (Tema 5):
-// - Funciones puras de data/red.ts en lugar de valores estáticos
-import { redInicial, contarRed, sumarVentasRed, sumarComisiones, nivelAlcanzado, comisionDeReferido } from '../data/red';
+// Resumen general con KPIs reales consumidos de /api/reportes/* (Fase 6):
+// total vendido, nº de pedidos, ticket promedio y comisiones devengadas,
+// más el ranking de referidos y productos.
+import { useCallback, useEffect, useState } from "react";
+import {
+  getResumen,
+  getTopProductos,
+  getTopReferidos,
+  type ResumenReporte,
+  type TopProducto,
+  type TopReferido,
+} from "../services/reportesService";
+import { ApiError } from "../services/http";
 
 const Dashboard = () => {
-  const referidosDirectos = redInicial.hijos?.length ?? 0;
-  const referidosActivos = contarRed(redInicial);
-  const ventasRed = sumarVentasRed(redInicial);
-  const comisionesMes = sumarComisiones(redInicial);
-  const nivel = nivelAlcanzado(referidosDirectos);
+  const [resumen, setResumen] = useState<ResumenReporte | null>(null);
+  const [topReferidos, setTopReferidos] = useState<TopReferido[]>([]);
+  const [topProductos, setTopProductos] = useState<TopProducto[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [error, setError] = useState("");
+
+  const cargar = useCallback(async () => {
+    setCargando(true);
+    setError("");
+    try {
+      const [r, refs, prods] = await Promise.all([
+        getResumen(),
+        getTopReferidos(),
+        getTopProductos(),
+      ]);
+      setResumen(r);
+      setTopReferidos(refs);
+      setTopProductos(prods);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : "Error al cargar el dashboard");
+    } finally {
+      setCargando(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(() => void cargar(), 0);
+    return () => clearTimeout(t);
+  }, [cargar]);
+
+  if (cargando) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800 mb-6">Resumen General</h1>
+        <p className="text-slate-400">Cargando indicadores…</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div>
+        <h1 className="text-2xl font-bold text-slate-800 mb-6">Resumen General</h1>
+        <div className="bg-red-50 text-red-600 border border-red-200 p-3 rounded-lg text-sm">
+          {error}
+        </div>
+      </div>
+    );
+  }
 
   const kpis = [
-    { etiqueta: "Ventas de la Red", valor: `$${ventasRed.toLocaleString()}`, color: "text-indigo-600" },
-    { etiqueta: "Referidos Activos", valor: referidosActivos.toString(), color: "text-indigo-600" },
-    { etiqueta: "Comisiones del Mes", valor: `$${comisionesMes.toFixed(2)}`, color: "text-green-600" },
-    { etiqueta: "Nivel Actual", valor: nivel, color: "text-amber-600" },
+    {
+      etiqueta: "Total Vendido",
+      valor: `$${(resumen?.totalVendido ?? 0).toLocaleString()}`,
+      color: "text-indigo-600",
+    },
+    {
+      etiqueta: "Pedidos",
+      valor: (resumen?.numPedidos ?? 0).toString(),
+      color: "text-indigo-600",
+    },
+    {
+      etiqueta: "Ticket Promedio",
+      valor: `$${(resumen?.ticketPromedio ?? 0).toFixed(2)}`,
+      color: "text-amber-600",
+    },
+    {
+      etiqueta: "Comisiones Devengadas",
+      valor: `$${(resumen?.comisionesDevengadas ?? 0).toFixed(2)}`,
+      color: "text-green-600",
+    },
   ];
-
-  // Top 3 referidos por ventas (sin recursión: solo nivel 1)
-  const topReferidos = [...(redInicial.hijos ?? [])]
-    .sort((a, b) => b.ventas - a.ventas)
-    .slice(0, 3);
 
   return (
     <div>
       <h1 className="text-2xl font-bold text-slate-800 mb-6">Resumen General</h1>
 
-      {/* ===== KPIs DERIVADOS DEL ESTADO ===== */}
+      {/* ===== KPIs REALES ===== */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6 mb-8">
         {kpis.map((kpi) => (
-          <div key={kpi.etiqueta} className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
+          <div
+            key={kpi.etiqueta}
+            className="bg-white p-6 rounded-lg shadow-sm border border-slate-100"
+          >
             <p className="text-sm text-slate-500 uppercase font-semibold">{kpi.etiqueta}</p>
             <p className={`text-3xl font-bold mt-2 ${kpi.color}`}>{kpi.valor}</p>
           </div>
@@ -39,55 +107,67 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* ===== TOP REFERIDOS ===== */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Top Referidos del Mes</h2>
-          <div className="space-y-3">
-            {topReferidos.map((ref, idx) => (
-              <div
-                key={ref.id}
-                className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition"
-              >
-                <div className="flex items-center gap-3">
-                  <span className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
-                    {idx + 1}
-                  </span>
-                  <div>
-                    <p className="font-semibold text-slate-800">{ref.nombre}</p>
-                    <p className="text-xs text-slate-500">Nivel {ref.nivel}</p>
+          <h2 className="text-lg font-bold text-slate-800 mb-4">Top Referidos de la Red</h2>
+          {topReferidos.length === 0 ? (
+            <p className="text-slate-400 text-sm">Aún no hay datos de la red.</p>
+          ) : (
+            <div className="space-y-3">
+              {topReferidos.slice(0, 5).map((ref, idx) => (
+                <div
+                  key={ref.referidoId}
+                  className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <div>
+                      <p className="font-semibold text-slate-800">{ref.nombre}</p>
+                      <p className="text-xs text-slate-500">
+                        {ref.codigo ? `Código ${ref.codigo}` : `Nodo #${ref.referidoId}`}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="font-bold text-slate-800">
+                      ${ref.ventas.toLocaleString()}
+                    </p>
+                    <p className="text-xs text-green-600 font-semibold">
+                      Saldo ${ref.saldo.toFixed(2)}
+                    </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="font-bold text-slate-800">${ref.ventas.toLocaleString()}</p>
-                  <p className="text-xs text-indigo-600 font-semibold">
-                    +${comisionDeReferido(ref).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
 
-        {/* ===== PROGRESO DE NIVEL ===== */}
+        {/* ===== TOP PRODUCTOS ===== */}
         <div className="bg-white p-6 rounded-lg shadow-sm border border-slate-100">
-          <h2 className="text-lg font-bold text-slate-800 mb-4">Progreso al Siguiente Nivel</h2>
-          <p className="text-slate-500 text-sm mb-4">
-            {referidosDirectos} referidos directos. El nivel se calcula con:
-          </p>
-          <ul className="space-y-2 text-sm text-slate-600 mb-6">
-            <li className="flex justify-between"><span>Bronce</span><span>0 – 1 directos</span></li>
-            <li className="flex justify-between"><span>Plata</span><span>2 – 3 directos</span></li>
-            <li className="flex justify-between"><span>Oro</span><span>4 – 5 directos</span></li>
-            <li className="flex justify-between"><span>Diamante</span><span>6+ directos</span></li>
-          </ul>
-
-          <div className="h-3 rounded-full bg-slate-100 overflow-hidden">
-            <div
-              className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full transition-all"
-              style={{ width: `${Math.min((referidosDirectos / 6) * 100, 100)}%` }}
-            />
-          </div>
-          <p className="text-center text-sm text-slate-500 mt-2 font-semibold">
-            Nivel actual: {nivel} ({referidosDirectos} / 6 directos para Diamante)
-          </p>
+          <h2 className="text-lg font-bold text-slate-800 mb-4">Productos Más Vendidos</h2>
+          {topProductos.length === 0 ? (
+            <p className="text-slate-400 text-sm">Aún no hay ventas registradas.</p>
+          ) : (
+            <div className="space-y-3">
+              {topProductos.slice(0, 5).map((p, idx) => (
+                <div
+                  key={p.productoId}
+                  className="flex items-center justify-between p-3 rounded-lg border border-slate-100 hover:bg-slate-50 transition"
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="w-8 h-8 rounded-full bg-amber-100 text-amber-700 font-bold flex items-center justify-center">
+                      {idx + 1}
+                    </span>
+                    <div>
+                      <p className="font-semibold text-slate-800">{p.nombre}</p>
+                      <p className="text-xs text-slate-500">{p.cantidad} unidades vendidas</p>
+                    </div>
+                  </div>
+                  <p className="font-bold text-slate-800">${p.total.toLocaleString()}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>

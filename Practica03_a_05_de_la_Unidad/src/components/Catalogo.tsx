@@ -1,18 +1,24 @@
 // src/components/Catalogo.tsx
 // Catálogo interactivo con búsqueda y filtros (Tema 5):
 // - useMemo para filtrar la lista sin recalcular en cada render
-// - Estado de carga y estado vacío
+// - Estado de carga, estado vacío y estado de error (PWA: sin conexión)
 // - Tarjetas enlazadas al detalle /producto/:id
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import { useCart } from '../context/CartContext';
+import { useCart } from '../context/cart';
 import { getProductos } from '../services/productosService';
+import { ApiError } from '../services/http';
 import { categorias, type Producto } from '../data/productos';
+import EstadoError from './EstadoError';
 
 const Catalogo = () => {
   const { addToCart } = useCart();
   const [productos, setProductos] = useState<Producto[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  // Mensaje de error (típicamente "sin conexión"): evita mostrar un catálogo vacío.
+  const [error, setError] = useState<string | null>(null);
+  // Cada reintento incrementa este contador y vuelve a disparar el efecto.
+  const [intento, setIntento] = useState<number>(0);
 
   // Lectura del query string (?categoria=...) enviado desde el Storefront
   const [searchParams, setSearchParams] = useSearchParams();
@@ -22,14 +28,29 @@ const Catalogo = () => {
   const [categoria, setCategoria] = useState<string>(searchParams.get("categoria") ?? "Todas");
 
   useEffect(() => {
-    // Consumimos el servicio de productos (mock que simula la API)
+    // Consumimos el servicio de productos (la API real; el service worker
+    // puede responder desde caché si no hay red).
     getProductos()
       .then((data) => {
         setProductos(data);
         setLoading(false);
       })
-      .catch(() => setLoading(false));
-  }, []);
+      .catch((err: unknown) => {
+        setError(
+          err instanceof ApiError && err.offline
+            ? "Sin conexión: no se pudo cargar el catálogo. Vuelve a intentarlo cuando tengas red."
+            : "No se pudo cargar el catálogo. Inténtalo de nuevo."
+        );
+        setLoading(false);
+      });
+  }, [intento]);
+
+  // Reintento (evento de usuario): reiniciamos el estado y forzamos la recarga.
+  const reintentar = () => {
+    setLoading(true);
+    setError(null);
+    setIntento((n) => n + 1);
+  };
 
   // Filtrado con useMemo: solo se recalcula cuando cambian busqueda/categoria/productos
   const productosFiltrados = useMemo(() => {
@@ -56,6 +77,11 @@ const Catalogo = () => {
 
   if (loading) {
     return <div className="text-center p-8">Cargando catálogo...</div>;
+  }
+
+  // Sin datos por error (p. ej. sin conexión y sin caché): lo decimos claro.
+  if (error) {
+    return <EstadoError mensaje={error} onReintentar={reintentar} />;
   }
 
   return (
@@ -134,7 +160,7 @@ const Catalogo = () => {
 
                 <button
                   onClick={() => addToCart(prod)}
-                  className="mt-auto w-full bg-slate-900 text-white py-2 rounded text-sm hover:bg-indigo-600 transition"
+                  className="mt-auto w-full min-h-[44px] bg-slate-900 text-white py-3 rounded text-sm hover:bg-indigo-600 transition"
                 >
                   Añadir al Carrito
                 </button>

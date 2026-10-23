@@ -1,10 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="es">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>practica02-react-bases</title>
+    <!-- PWA: ícono para iOS (la app instalada usa este icono) -->
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <!-- PWA: el enlace al web app manifest lo inyecta vite-plugin-pwa al compilar -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <!-- PWA: color de la barra del navegador y de la barra en modo standalone -->
+    <meta name="theme-color" content="#4f46e5" />
+    <meta
+      name="description"
+      content="MultiCatálogo: tienda de cosméticos con red de ventas multinivel. Catálogo, carrito, checkout y comisiones."
+    />
+    <!-- PWA: comportamiento de la app en iOS (standalone) -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="MultiCatálogo" />
+    <title>MultiCatálogo — Tienda de cosméticos</title>
   </head>
   <body>
     <div id="root"></div>
