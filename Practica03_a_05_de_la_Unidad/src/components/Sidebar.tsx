@@ -1,6 +1,7 @@
 // src/components/Sidebar.tsx
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/auth";
+import PwaInstallButton from "./PwaInstallButton";
 
 // NUEVO: Agregamos la función a la interfaz de props
 interface SidebarProps {
@@ -132,6 +133,10 @@ const Sidebar = ({ isCollapsed, isMobileOpen, closeMobileMenu }: SidebarProps) =
           );
         })}
       </nav>
+
+      <div className="p-3 border-t border-slate-700">
+        <PwaInstallButton variant="sidebar" isCollapsed={isCollapsed} />
+      </div>
 
       <div className="p-3 border-t border-slate-700 text-xs text-slate-300">
         {isCollapsed ? (

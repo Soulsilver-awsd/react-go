@@ -30,8 +30,8 @@ export default defineConfig({
       ],
       // ===== Web App Manifest =====
       manifest: {
-        name: 'MultiCatálogo — Tienda de cosméticos',
-        short_name: 'MultiCatálogo',
+        name: 'Paulo — Tienda de cosméticos',
+        short_name: 'Paulo',
         description:
           'Tienda de cosméticos con red de ventas multinivel: catálogo, carrito, checkout y comisiones.',
         lang: 'es',
